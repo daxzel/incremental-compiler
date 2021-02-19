@@ -1,20 +1,37 @@
 package com.daxzel.compiler;
 
+import com.daxzel.compiler.compilation.Compiler
+import com.daxzel.compiler.compilation.JavacRunner
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
-import org.apache.commons.io.IOUtils
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
+import org.mockito.Mockito.*
 import java.io.File
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-class CompilerTest {
+private inline fun <reified T> any(): T = Mockito.any()
+
+class IncrementalCompilerTest {
 
     private val USE_CASES_PATH = "/com/daxzel/compiler/usecases"
+
+    private val compiler: IncrementalCompiler
+    private val javac: JavacRunner
+
+    init {
+        javac = spy(JavacRunner())
+        compiler = IncrementalCompiler(javac)
+    }
+
+    @BeforeEach
+    fun cleanSpy() {
+        reset(javac)
+    }
 
     @Test
     fun testSimpleCompilation() {
@@ -24,10 +41,10 @@ class CompilerTest {
         val output = Files.createTempDirectory("compiler_output_before")
         val input = Paths.get(javaClass.getResource("$USE_CASES_PATH/simple").toURI())
 
-        compile(input, output, compilerDb)
+        compiler.compile(input, output, compilerDb)
 
         val javacOutput = Files.createTempDirectory("compiler_output_javac")
-        runJavaC(input, javacOutput)
+        Compiler(JavacRunner()).compile(input, javacOutput)
 
         assertTrue(compareTwoDirs(output, javacOutput))
     }
@@ -43,36 +60,18 @@ class CompilerTest {
         val afterInput = Paths.get(javaClass.getResource("$USE_CASES_PATH/nochanges/after").toURI())
         val afterOutput = Files.createTempDirectory("compiler_output_after")
 
-        compile(beforeInput, beforeOutput, compilerDb)
-        compile(afterInput, afterOutput, compilerDb)
+        compiler.compile(beforeInput, beforeOutput, compilerDb)
+
+        verify(javac, atLeastOnce()).compileClass(any(), any())
+        reset(javac)
+        compiler.compile(afterInput, afterOutput, compilerDb)
 
         val testOutput = Files.createTempDirectory("compiler_output_javac")
-        runJavaC(beforeInput, testOutput)
+        Compiler(JavacRunner()).compile(beforeInput, testOutput)
 
         assertTrue(compareTwoDirs(beforeOutput, afterInput))
-    }
-
-    fun runJavaC(inputDir: Path, outputDir: Path) {
-        val srcClassToOutput = Files.walk(inputDir)
-            .filter { it.toFile().isFile }
-            .map {
-            // To get the output java class absolute path we first need to fine relative path for input
-            val outputClassPath = outputDir.resolve(inputDir.relativize(it))
-            // For output javac gets a dir.
-            val outputClassDirPath = outputClassPath.parent
-            // e.g. /inputDir/package/main.java -> /outputDir/package
-            Pair(it, outputClassDirPath)
-        }
-
-        srcClassToOutput.forEach { (src, dst) ->
-            Files.createDirectories(dst)
-            val javacCommand = "javac -d $dst $src"
-            val process = Runtime.getRuntime().exec(javacCommand)
-            assertEquals(0, process.waitFor()) {
-                val error = IOUtils.toString(process.errorStream, StandardCharsets.UTF_8)
-                "$javacCommand failed with $error"
-            }
-        }
+        // make sure we haven't used javac the second time we called compilation
+        verify(javac, never()).compileClass(any(), any())
     }
 
     fun File.calcMD5() = DigestUtils.md5Hex(FileUtils.readFileToByteArray(this))
