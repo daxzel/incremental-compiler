@@ -47,19 +47,31 @@ class IncrementalCompilerTest {
     }
 
     @Test
-    fun testCaseOne() {
+    fun testCase1() {
         // We have only one class. No changes in the file so theoretically
         // we shouldn't call compilation a second time.
-        incrementalCompilationTest("case1", true)
+        incrementalCompilationTest("case1", 1, 0)
     }
 
     @Test
-    fun testCaseTwo() {
+    fun testCase2() {
         // We have only one class. The method in the class changed so we should call compilation in the second pass.
-        incrementalCompilationTest("case2", false)
+        incrementalCompilationTest("case2", 1, 1)
     }
 
-    private fun incrementalCompilationTest(testCase: String, noSecondCompilation: Boolean) {
+    @Test
+    fun testCase3() {
+        // We have only one class. A new method added to the class so we should call compilation in the second pass.
+        incrementalCompilationTest("case3", 1, 1)
+    }
+
+    @Test
+    fun testCase4() {
+        // We have only one class. A new method added to the class so we should call compilation in the second pass.
+        incrementalCompilationTest("case4", 2, 1)
+    }
+
+    private fun incrementalCompilationTest(testCase: String, beforeCompilations: Int, afterCompilations: Int) {
 
         val compilerDb = Files.createTempDirectory("compiler_db")
 
@@ -71,7 +83,7 @@ class IncrementalCompilerTest {
 
         compiler.compile(beforeInput, beforeOutput, compilerDb)
 
-        verify(javac, atLeastOnce()).compileClass(any(), any())
+        verify(javac, times(beforeCompilations)).compileClass(any(), any())
         reset(javac)
         compiler.compile(afterInput, afterOutput, compilerDb)
 
@@ -79,11 +91,7 @@ class IncrementalCompilerTest {
         Compiler(JavacRunner()).compile(beforeInput, testOutput)
 
         assertTrue(compareTwoDirs(beforeOutput, afterInput))
-        if (noSecondCompilation) {
-            verify(javac, never()).compileClass(any(), any())
-        } else {
-            verify(javac, atLeastOnce()).compileClass(any(), any())
-        }
+        verify(javac, times(afterCompilations)).compileClass(any(), any())
     }
 
 }
