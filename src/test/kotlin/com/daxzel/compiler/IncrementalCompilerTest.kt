@@ -47,15 +47,16 @@ class IncrementalCompilerTest {
     }
 
     @Test
-    fun testNoChangesCompilation() {
-        val testCase = "nochanges"
-        incrementalCompilationTest(testCase, true)
+    fun testCaseOne() {
+        // We have only one class. No changes in the file so theoretically
+        // we shouldn't call compilation a second time.
+        incrementalCompilationTest("case1", true)
     }
 
     @Test
-    fun testMethodChanged() {
-        val testCase = "methodchanged"
-        incrementalCompilationTest(testCase, false)
+    fun testCaseTwo() {
+        // We have only one class. The method in the class changed so we should call compilation in the second pass.
+        incrementalCompilationTest("case2", false)
     }
 
     private fun incrementalCompilationTest(testCase: String, noSecondCompilation: Boolean) {
