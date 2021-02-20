@@ -12,7 +12,6 @@ import kotlinx.dnq.util.initMetaData
 import kotlinx.dnq.xdRequiredStringProp
 import java.io.Closeable
 import java.nio.file.Path
-import java.nio.file.Paths
 
 class BuildInfo(entity: Entity) : XdEntity(entity) {
     companion object : XdNaturalEntityType<BuildInfo>()
@@ -24,14 +23,14 @@ class BuildInfo(entity: Entity) : XdEntity(entity) {
     var classpathFilesHash by xdRequiredStringProp()
 }
 
-class CompilationDb : Closeable {
+class CompilationDb(private val dir: Path) : Closeable {
 
     private val store: TransientEntityStore
 
     init {
         val userDir = System.getProperty("user.dir");
         println("Current working directory : $userDir");
-        val dbPath = Paths.get(userDir).resolve(".inc_compiler")
+        val dbPath = dir.resolve(".inc_compiler")
 
         XdModel.registerNodes(BuildInfo)
 

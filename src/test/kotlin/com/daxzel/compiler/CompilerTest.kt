@@ -2,12 +2,9 @@ package com.daxzel.compiler;
 
 import com.daxzel.compiler.compilation.Compiler
 import com.daxzel.compiler.compilation.JavacRunner
-import com.daxzel.compiler.compilation.compareTwoDirs
+import com.daxzel.compiler.compilation.compareClasses
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
-import org.mockito.Mockito.*
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -24,7 +21,7 @@ class CompilerTest {
         val javacOutput = Files.createTempDirectory("compiler_output_javac")
         Compiler(JavacRunner()).compile(input, javacOutput)
 
-        assertTrue(compareTwoDirs(output, javacOutput))
+        assertTrue(compareClasses(output, javacOutput))
     }
 
 }

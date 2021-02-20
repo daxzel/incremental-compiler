@@ -10,7 +10,7 @@ import java.nio.file.Path
 class IncrementalCompiler(val javac: JavacRunner) {
 
     fun compile(inputPath: Path, classpath: Path) {
-        CompilationDb().use { db ->
+        CompilationDb(classpath).use { db ->
             val compiler = Compiler(javac)
             compiler.compile(inputPath, classpath)
 
