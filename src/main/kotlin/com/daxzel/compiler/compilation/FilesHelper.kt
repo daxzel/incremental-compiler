@@ -3,14 +3,30 @@ package com.daxzel.compiler.compilation
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import java.io.*
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 
 private const val CLASS_EXTENSION = "class"
+private const val JAVA_EXTENSION = "java"
+
+fun javaToClassFilename(javaFileName :Path): Path {
+    val fileName = javaFileName.toAbsolutePath().toString();
+    assert(FilenameUtils.getExtension(fileName) == JAVA_EXTENSION)
+    val filenameWithoutExtension = FilenameUtils.removeExtension(fileName)
+    return Paths.get("$filenameWithoutExtension.$CLASS_EXTENSION")
+}
 
 fun compareClasses(dir1: Path, dir2: Path): Boolean {
     val extensions = setOf(CLASS_EXTENSION)
     return calcMD5HashForDir(dir1, extensions) == calcMD5HashForDir(dir2, extensions)
+}
+
+fun calcMD5HashForFile(file: Path): String {
+    Files.newInputStream(file).use {
+        return DigestUtils.md5Hex(it);
+    }
 }
 
 fun calcMD5HashForDir(dirToHash: Path, extensions: Set<String>): String {

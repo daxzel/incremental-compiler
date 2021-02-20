@@ -2,23 +2,31 @@ package com.daxzel.compiler.db
 
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.entitystore.Entity
-import kotlinx.dnq.XdEntity
-import kotlinx.dnq.XdModel
-import kotlinx.dnq.XdNaturalEntityType
+import kotlinx.dnq.*
 import kotlinx.dnq.creator.findOrNew
 import kotlinx.dnq.query.firstOrNull
 import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.initMetaData
-import kotlinx.dnq.xdRequiredStringProp
 import java.nio.file.Path
+
+class BuildFile(entity: Entity) : XdEntity(entity) {
+    companion object : XdNaturalEntityType<BuildFile>()
+
+    var sourceHash by xdRequiredStringProp()
+    var classHash by xdRequiredStringProp()
+
+    var buildInfo: BuildInfo by xdParent(BuildInfo::files)
+}
 
 class BuildInfo(entity: Entity) : XdEntity(entity) {
     companion object : XdNaturalEntityType<BuildInfo>()
 
-    var sourceFilesHash by xdRequiredStringProp()
-    var classpathFilesHash by xdRequiredStringProp()
+    var sourceDirHash by xdRequiredStringProp()
+    var classpathDirHash by xdRequiredStringProp()
 
     var sourceFolder by xdRequiredStringProp()
+
+    val files by xdChildren0_N(BuildFile::buildInfo)
 }
 
 fun getDb(dir: Path): TransientEntityStore {
@@ -26,11 +34,12 @@ fun getDb(dir: Path): TransientEntityStore {
     println("Current working directory : $userDir");
     val dbPath = dir.resolve(".inc_compiler")
 
-    XdModel.registerNodes(BuildInfo)
+    XdModel.registerNodes(BuildInfo, BuildFile)
 
     val store = StaticStoreContainer.init(
         dbFolder = dbPath.toFile(),
-        environmentName = "compilation_db"
+        environmentName = "compilation_db" +
+                ""
     )
 
     initMetaData(XdModel.hierarchy, store)
@@ -41,9 +50,9 @@ fun getLastBuildInfo(): BuildInfo? {
     return BuildInfo.all().firstOrNull()
 }
 
-fun storeBuildInfo(sourceFolder: Path, sourceFilesHash: String, classpathFilesHash: String) {
+fun storeBuildInfo(sourceFolder: Path, sourceDirHash: String, classpathDirHash: String) {
     val buildInfo = BuildInfo.findOrNew {}
     buildInfo.sourceFolder = sourceFolder.toString()
-    buildInfo.sourceFilesHash = sourceFilesHash
-    buildInfo.classpathFilesHash = classpathFilesHash
+    buildInfo.sourceDirHash = sourceDirHash
+    buildInfo.classpathDirHash = classpathDirHash
 }

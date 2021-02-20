@@ -1,29 +1,54 @@
 package com.daxzel.compiler.compilation
 
+import com.daxzel.compiler.db.BuildFile
+import com.daxzel.compiler.db.BuildInfo
+import kotlinx.dnq.query.filter
+import kotlinx.dnq.query.firstOrNull
 import java.nio.file.Files
 import java.nio.file.Path
 
 class Compiler(val javac: JavacRunner) {
 
-    /**
-     * Run javac on all files in input directory and store resulting .class into output directory.
-     */
     fun compile(inputDir: Path, outputDir: Path) {
-        val srcClassToOutput = Files.walk(inputDir)
+        Files.walk(inputDir)
             .filter { it.toFile().isFile }
-            .map {
-                // To get the output java class absolute path we first need to fine relative path for input
-                val outputClassPath = outputDir.resolve(inputDir.relativize(it))
-                // For output javac gets a dir.
-                val outputClassDirPath = outputClassPath.parent
-                // e.g. /inputDir/package/main.java -> /outputDir/package
-                Pair(it, outputClassDirPath)
+            .forEach {
+                javac.compileClass(it, outputDir)
             }
+    }
 
-        srcClassToOutput.forEach { (src, dst) ->
-            Files.createDirectories(dst)
-            javac.compileClass(src, dst)
-        }
+    fun compile(inputDir: Path, outputDir: Path, oldBuildInfo: BuildInfo?, newBuildInfo: BuildInfo) {
+        Files.walk(inputDir)
+            .filter { it.toFile().isFile }
+            .forEach {
+
+                val sourceHash = calcMD5HashForFile(it);
+                val relativePath = inputDir.relativize(it)
+                val outputClassFileName = javaToClassFilename(outputDir.resolve(relativePath))
+
+                if (oldBuildInfo != null) {
+                    // TODO: do we need to check if the file has been moved?
+                    val buildFile = oldBuildInfo.files.filter {
+                            it.sourceHash eq sourceHash
+                        }.firstOrNull()
+                    if (buildFile != null) {
+                        // TODO: we need to check if the class still exists
+                        val oldClassFileHash = calcMD5HashForFile(outputClassFileName)
+                        if (buildFile.classHash == oldClassFileHash) {
+                            return@forEach;
+                        }
+                    }
+                }
+
+                javac.compileClass(it, outputDir)
+
+                val buildValue = BuildFile.new {
+                    this.sourceHash = calcMD5HashForFile(it)
+                    this.classHash = calcMD5HashForFile(outputClassFileName)
+                }
+
+                newBuildInfo.files.add(buildValue)
+            }
     }
 
 }
