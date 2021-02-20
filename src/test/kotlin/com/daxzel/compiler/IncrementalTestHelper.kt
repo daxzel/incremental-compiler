@@ -34,7 +34,7 @@ fun incrementalCompilationTest(group: String, case: Int, beforeCompilations: Int
     compiler.compile(afterInput, output)
 
     val testOutput = Files.createTempDirectory("compiler_output_javac")
-    Compiler(JavacRunner()).compile(beforeInput, testOutput)
+    Compiler(JavacRunner()).compile(afterInput, testOutput)
 
     assertTrue(compareClasses(output, testOutput))
     verify(javac, times(afterCompilations)).compileClass(any(), any())
