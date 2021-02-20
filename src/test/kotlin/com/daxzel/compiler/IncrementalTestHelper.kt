@@ -21,19 +21,17 @@ fun incrementalCompilationTest(group: String, case: Int, beforeCompilations: Int
     val javac = Mockito.spy(JavacRunner())
     val compiler = IncrementalCompiler(javac)
 
-    val compilerDb = Files.createTempDirectory("compiler_db")
-
     val beforeOutput = Files.createTempDirectory("compiler_output_before")
     val beforeInput = Paths.get(compiler.javaClass.getResource("$USE_CASES_PATH/$group/case$case/before").toURI())
 
     val afterInput = Paths.get(compiler.javaClass.getResource("$USE_CASES_PATH/$group/case$case/after").toURI())
     val afterOutput = Files.createTempDirectory("compiler_output_after")
 
-    compiler.compile(beforeInput, beforeOutput, compilerDb)
+    compiler.compile(beforeInput, beforeOutput)
 
     Mockito.verify(javac, times(beforeCompilations)).compileClass(any(), any())
     Mockito.reset(javac)
-    compiler.compile(afterInput, afterOutput, compilerDb)
+    compiler.compile(afterInput, afterOutput)
 
     val testOutput = Files.createTempDirectory("compiler_output_javac")
     Compiler(JavacRunner()).compile(beforeInput, testOutput)
