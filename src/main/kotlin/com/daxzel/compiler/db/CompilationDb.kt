@@ -12,10 +12,14 @@ import java.nio.file.Path
 class BuildFile(entity: Entity) : XdEntity(entity) {
     companion object : XdNaturalEntityType<BuildFile>()
 
+    var relativePath by xdRequiredStringProp()
+
     var sourceHash by xdRequiredStringProp()
     var classHash by xdRequiredStringProp()
 
     var buildInfo: BuildInfo by xdParent(BuildInfo::files)
+
+    val filesDependsOnMe by xdLink0_N(BuildFile)
 }
 
 class BuildInfo(entity: Entity) : XdEntity(entity) {

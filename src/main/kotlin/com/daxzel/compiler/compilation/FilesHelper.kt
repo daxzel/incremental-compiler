@@ -20,16 +20,16 @@ fun javaToClassFilename(javaFileName :Path): Path {
 
 fun compareClasses(dir1: Path, dir2: Path): Boolean {
     val extensions = setOf(CLASS_EXTENSION)
-    return calcMD5HashForDir(dir1, extensions) == calcMD5HashForDir(dir2, extensions)
+    return getMD5Dir(dir1, extensions) == getMD5Dir(dir2, extensions)
 }
 
-fun calcMD5HashForFile(file: Path): String {
+fun getMD5(file: Path): String {
     Files.newInputStream(file).use {
         return DigestUtils.md5Hex(it);
     }
 }
 
-fun calcMD5HashForDir(dirToHash: Path, extensions: Set<String>): String {
+fun getMD5Dir(dirToHash: Path, extensions: Set<String>): String {
     assert(dirToHash.toFile().isDirectory)
     val fileStreams = mutableListOf<FileInputStream>()
     collectInputStreams(dirToHash, fileStreams, extensions)
