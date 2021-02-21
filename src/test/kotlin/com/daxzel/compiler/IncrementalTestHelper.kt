@@ -14,6 +14,7 @@ val USE_CASES_PATH = "/com/daxzel/compiler/usecases"
 
 val ONE_CLASS_GROUP = "oneclass"
 val TWO_CLASSES_GROUP = "twoclasses"
+val THREE_CLASSES_GROUP = "threeclasses"
 
 private inline fun <reified T> any(): T = Mockito.any()
 
@@ -29,7 +30,7 @@ fun incrementalCompilationTest(group: String, case: Int, beforeCompilations: Int
 
     compiler.compile(beforeInput, output)
 
-    verify(javac, times(beforeCompilations)).compileClass(any(), any())
+    verify(javac, times(beforeCompilations)).compileClass(any(), any(), any())
     Mockito.reset(javac)
     compiler.compile(afterInput, output)
 
@@ -37,5 +38,5 @@ fun incrementalCompilationTest(group: String, case: Int, beforeCompilations: Int
     Compiler(JavacRunner()).compile(afterInput, testOutput)
 
     assertTrue(compareClasses(output, testOutput))
-    verify(javac, times(afterCompilations)).compileClass(any(), any())
+    verify(javac, times(afterCompilations)).compileClass(any(), any(), any())
 }

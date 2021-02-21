@@ -30,3 +30,5 @@ hs_err_pid*
 *.iws
 
 build
+
+.DS_store

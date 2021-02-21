@@ -13,7 +13,7 @@ class Compiler(val javac: JavacRunner) {
         Files.walk(inputDir)
             .filter { it.toFile().isFile }
             .forEach {
-                javac.compileClass(it, outputDir)
+                javac.compileClass(it, inputDir, outputDir)
             }
     }
 
@@ -40,7 +40,7 @@ class Compiler(val javac: JavacRunner) {
                     }
                 }
 
-                javac.compileClass(it, outputDir)
+                javac.compileClass(it, inputDir, outputDir)
 
                 val buildValue = BuildFile.new {
                     this.sourceHash = calcMD5HashForFile(it)

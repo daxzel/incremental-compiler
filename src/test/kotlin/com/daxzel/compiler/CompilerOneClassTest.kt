@@ -22,5 +22,4 @@ class CompilerOneClassTest {
         incrementalCompilationTest(ONE_CLASS_GROUP, 3, 1, 1)
     }
 
-
 }
