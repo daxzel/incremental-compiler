@@ -2,18 +2,33 @@ package com.daxzel.compiler.compilation
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
+import org.apache.commons.io.FilenameUtils.getExtension
 import java.io.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
+import java.util.stream.Stream
 
 private const val CLASS_EXTENSION = "class"
 private const val JAVA_EXTENSION = "java"
 
-fun javaToClassFilename(javaFileName :Path): Path {
+class JavaToClass(val relativePath: Path, val javaFileAbsolute: Path, val classFileAbsolute: Path)
+
+fun walkJavaClasses(inputDir: Path, outputDir: Path): Stream<JavaToClass> {
+    return Files.walk(inputDir)
+        .filter { it.toFile().isFile }
+        .filter { getExtension(it.toString()) == JAVA_EXTENSION }
+        .map {
+            val relativePath = inputDir.relativize(it)
+            val outputClassFileName = javaToClassFilename(outputDir.resolve(relativePath))
+            JavaToClass(relativePath, it, outputClassFileName)
+        }
+}
+
+fun javaToClassFilename(javaFileName: Path): Path {
     val fileName = javaFileName.toAbsolutePath().toString();
-    assert(FilenameUtils.getExtension(fileName) == JAVA_EXTENSION)
+    assert(getExtension(fileName) == JAVA_EXTENSION)
     val filenameWithoutExtension = FilenameUtils.removeExtension(fileName)
     return Paths.get("$filenameWithoutExtension.$CLASS_EXTENSION")
 }
@@ -49,7 +64,7 @@ private fun collectInputStreams(dir: Path, foundStreams: MutableList<FileInputSt
     val fileList = dir.toFile().listFiles()
     Arrays.sort(fileList) { f1, f2 -> f1.name.compareTo(f2.name) }
     for (file: File in fileList!!) {
-        val extension = FilenameUtils.getExtension(file.name)
+        val extension = getExtension(file.name)
         when {
             file.isDirectory -> collectInputStreams(file.toPath(), foundStreams, extensions)
             extensions.contains(extension) -> {

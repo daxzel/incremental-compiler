@@ -5,49 +5,42 @@ import com.daxzel.compiler.compilation.dependencies.ClassInfo
 import com.daxzel.compiler.compilation.dependencies.getClassInfo
 import com.daxzel.compiler.db.*
 import kotlinx.dnq.creator.findOrNew
-import kotlinx.dnq.query.FilteringContext.eq
 import kotlinx.dnq.query.filter
 import kotlinx.dnq.query.firstOrNull
 import kotlinx.dnq.query.iterator
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.stream.Collectors
 
 class IncrementalCompiler(val javac: JavacRunner) {
 
-    fun compile(inputPath: Path, classpath: Path) {
-        getDb(classpath).use { db ->
-
-            val sourceDirHash = getMD5Dir(inputPath, setOf("java"))
-            val classpathDirHash = getMD5Dir(classpath, setOf("class"))
+    fun compile(inputDir: Path, classpathDir: Path) {
+        getDb(classpathDir).use { db ->
 
             db.transactional {
 
-                val buildInfo = getLastBuildInfo()
+                val buildInfo = BuildInfo.all().firstOrNull()
 
-                if (buildInfo != null) {
-                    if (buildInfo.sourceDirHash == sourceDirHash &&
-                        buildInfo.classpathDirHash == classpathDirHash) {
-                        return@transactional
-                    }
-                }
+                val javaClasses = walkJavaClasses(inputDir, classpathDir)
+                    .collect(Collectors.toMap(JavaToClass::relativePath) { it });
+
+                val compilationInfo = CompilationInfo(inputDir, classpathDir, javaClasses, buildInfo)
+                val compilationContext = CompilationContext()
+
+                cleanClassesBasedOnRemoved(compilationInfo, compilationContext)
 
                 val newBuildInfo = BuildInfo.findOrNew {}
 
-                internalCompile(inputPath, classpath, buildInfo, newBuildInfo)
+                internalCompile(inputDir, classpathDir, buildInfo, newBuildInfo)
 
-                val newClasspathDirHash = getMD5Dir(classpath, setOf("class"))
-                newBuildInfo.sourceFolder = inputPath.toString()
-                newBuildInfo.sourceDirHash = sourceDirHash
-                newBuildInfo.classpathDirHash = newClasspathDirHash
-
-                storeBuildInfo(inputPath, sourceDirHash, newClasspathDirHash)
+                newBuildInfo.sourceFolder = inputDir.toString()
             }
         }
     }
 
     private fun internalCompile(inputDir: Path, outputDir: Path, oldBuildInfo: BuildInfo?, newBuildInfo: BuildInfo) {
 
-        val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFile>> = mutableMapOf()
+        val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFileInfo>> = mutableMapOf()
         val builtInputFiles: MutableSet<Path> = mutableSetOf()
         val filesToBuild: MutableSet<Path> = mutableSetOf()
 
@@ -59,26 +52,26 @@ class IncrementalCompiler(val javac: JavacRunner) {
                 val relativePath = inputDir.relativize(it).toString()
                 val outputClassFileName = javaToClassFilename(outputDir.resolve(relativePath))
 
-                var oldBuildFile: BuildFile? = null
+                var oldBuildFileInfo: BuildFileInfo? = null
                 if (oldBuildInfo != null) {
                     // TODO: do we need to check if the file has been moved?
                     // TODO fill up build for the new build
-                    oldBuildFile = oldBuildInfo.files.filter {
-                        it.relativePath eq relativePath
+                    oldBuildFileInfo = oldBuildInfo.files.filter {
+                        it.relativePathStr eq relativePath
                     }.firstOrNull()
                 }
 
-                if (oldBuildFile != null) {
+                if (oldBuildFileInfo != null) {
                     // TODO: we need to check if the class still exists
                     val oldClassFileHash = getMD5(outputClassFileName)
-                    if (oldBuildFile.sourceHash == sourceHash && oldBuildFile.classHash == oldClassFileHash) {
+                    if (oldBuildFileInfo.sourceHash == sourceHash && oldBuildFileInfo.classHash == oldClassFileHash) {
                         return@forEach;
                     }
                 }
 
-                if (oldBuildFile != null) {
-                    for (fileDependsOnMe in oldBuildFile.filesDependsOnMe) {
-                        filesToBuild.add(inputDir.resolve(fileDependsOnMe.relativePath))
+                if (oldBuildFileInfo != null) {
+                    for (fileDependsOnMe in oldBuildFileInfo.filesDependsOnMe) {
+                        filesToBuild.add(inputDir.resolve(fileDependsOnMe.relativePathStr))
                     }
                 }
 
@@ -86,10 +79,10 @@ class IncrementalCompiler(val javac: JavacRunner) {
 
                 javac.compileClass(it, inputDir, outputDir)
 
-                val newBuildFile = BuildFile.new {
+                val newBuildFile = BuildFileInfo.new {
                     this.sourceHash = getMD5(it)
                     this.classHash = getMD5(outputClassFileName)
-                    this.relativePath = relativePath
+                    this.relativePathStr = relativePath
                 }
 
                 newBuildInfo.files.add(newBuildFile)
@@ -108,10 +101,10 @@ class IncrementalCompiler(val javac: JavacRunner) {
 
                 javac.compileClass(toBuild, inputDir, outputDir)
 
-                val newBuildFile = BuildFile.new {
+                val newBuildFile = BuildFileInfo.new {
                     this.sourceHash = getMD5(toBuild)
                     this.classHash = getMD5(outputClassFileName)
-                    this.relativePath = relativePath.toString()
+                    this.relativePathStr = relativePath.toString()
                 }
 
                 newBuildInfo.files.add(newBuildFile)
