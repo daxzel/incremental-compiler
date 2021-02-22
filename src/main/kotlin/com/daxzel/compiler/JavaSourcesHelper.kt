@@ -1,4 +1,4 @@
-package com.daxzel.compiler.compilation
+package com.daxzel.compiler
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils

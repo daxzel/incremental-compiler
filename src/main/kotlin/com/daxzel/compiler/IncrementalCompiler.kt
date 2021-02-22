@@ -10,17 +10,18 @@ import java.util.stream.Collectors
 
 class IncrementalCompiler(val javac: JavacRunner) {
 
-    fun compile(inputDir: Path, classpathDir: Path) {
-        getDb(classpathDir).use { db ->
+    fun compile(sourceFilesDir: Path, classFilesDir: Path) {
+
+        getDb(classFilesDir).use { db ->
 
             db.transactional {
 
                 val buildInfo = BuildInfo.all().firstOrNull()
 
-                val javaClasses = walkJavaClasses(inputDir, classpathDir)
+                val javaClasses = walkJavaClasses(sourceFilesDir, classFilesDir)
                     .collect(Collectors.toMap({ it.relativePath.toString() }, { it }));
 
-                val info = CompilationInfo(inputDir, classpathDir, javaClasses, buildInfo, javac)
+                val info = CompilationInfo(sourceFilesDir, classFilesDir, javaClasses, buildInfo, javac)
                 val context = CompilationContext()
 
                 cleanClassesBasedOnRemoved(info, context)
@@ -28,15 +29,11 @@ class IncrementalCompiler(val javac: JavacRunner) {
                 compileDependencies(info, context)
 
                 val newBuildInfo = BuildInfo.findOrNew {}
-                newBuildInfo.sourceFolder = inputDir.toString()
+                newBuildInfo.sourceFolder = sourceFilesDir.toString()
 
                 fillUpNewBuildInfo(info, context, newBuildInfo)
             }
         }
     }
 
-}
-
-fun main(args: Array<String>) {
-    TODO("Run compile")
 }

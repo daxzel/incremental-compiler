@@ -9,10 +9,11 @@ buildscript {
 }
 
 plugins {
-    id "java"
-    id "idea"
+    id 'application'
     id "org.jetbrains.kotlin.jvm" version "1.4.30"
 }
+
+mainClassName = "com.daxzel.compiler.CompilerUtilKt"
 
 compileKotlin {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -41,6 +42,7 @@ dependencies {
     implementation "org.jetbrains.xodus:xodus-environment:$xodusVersion"
     implementation "org.jetbrains.xodus:xodus-vfs:$xodusVersion"
     implementation "org.jetbrains.xodus:dnq:1.4.480"
+    implementation "com.github.ajalt.clikt:clikt:3.1.0"
     implementation "asm:asm:$asmVersion"
     implementation "asm:asm-commons:$asmVersion"
     testImplementation "org.mockito:mockito-core:3.7.7"

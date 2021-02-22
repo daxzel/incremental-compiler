@@ -1,9 +1,11 @@
 package com.daxzel.compiler.compilation
 
+import com.daxzel.compiler.JavaToClass
 import com.daxzel.compiler.compilation.dependencies.ClassInfo
 import com.daxzel.compiler.compilation.dependencies.getClassInfo
 import com.daxzel.compiler.db.BuildFileInfo
 import com.daxzel.compiler.db.BuildInfo
+import com.daxzel.compiler.getMD5
 import kotlinx.dnq.query.iterator
 import java.nio.file.Files
 import java.nio.file.Path
