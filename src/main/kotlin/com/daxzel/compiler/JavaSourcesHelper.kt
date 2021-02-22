@@ -13,7 +13,15 @@ import java.util.stream.Stream
 private const val CLASS_EXTENSION = "class"
 private const val JAVA_EXTENSION = "java"
 
-class JavaToClass(val relativePath: Path, val javaFileAbsolute: Path, val classFileAbsolute: Path)
+class JavaToClass private constructor(val relativePath: Path,
+                                      val javaFileAbsolute: Path, val classFileAbsolute: Path) {
+    companion object {
+        fun get(inputDir: Path, outputDir: Path, relativeJavaFile: Path): JavaToClass {
+            val outputClassFileName = javaToClassFilename(outputDir.resolve(relativeJavaFile))
+            return JavaToClass(relativeJavaFile, inputDir.resolve(relativeJavaFile), outputClassFileName)
+        }
+    }
+}
 
 fun walkJavaClasses(inputDir: Path, outputDir: Path): Stream<JavaToClass> {
     return Files.walk(inputDir)
@@ -21,8 +29,7 @@ fun walkJavaClasses(inputDir: Path, outputDir: Path): Stream<JavaToClass> {
         .filter { getExtension(it.toString()) == JAVA_EXTENSION }
         .map {
             val relativePath = inputDir.relativize(it)
-            val outputClassFileName = javaToClassFilename(outputDir.resolve(relativePath))
-            JavaToClass(relativePath, it, outputClassFileName)
+            JavaToClass.get(inputDir, outputDir, relativePath)
         }
 }
 

@@ -1,4 +1,4 @@
-package com.daxzel.compiler.db
+package com.daxzel.compiler
 
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.entitystore.Entity

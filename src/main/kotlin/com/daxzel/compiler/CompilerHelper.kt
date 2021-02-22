@@ -1,11 +1,5 @@
-package com.daxzel.compiler.compilation
+package com.daxzel.compiler
 
-import com.daxzel.compiler.JavaToClass
-import com.daxzel.compiler.compilation.dependencies.ClassInfo
-import com.daxzel.compiler.compilation.dependencies.getClassInfo
-import com.daxzel.compiler.db.BuildFileInfo
-import com.daxzel.compiler.db.BuildInfo
-import com.daxzel.compiler.getMD5
 import kotlinx.dnq.query.iterator
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,20 +17,27 @@ class CompilationContext {
     val recompileRequired: MutableSet<JavaToClass> = mutableSetOf()
 }
 
-fun cleanClassesBasedOnRemoved(info: CompilationInfo, context: CompilationContext) {
+fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationContext) {
     // No previous compilation. We are not int position to clen any .class files from the target directory
     info.previousBuildInfo ?: return
 
     for (file in info.previousBuildInfo.files) {
 
-        val javaFile = info.javaFiles[file.relativePathStr]
-        if (javaFile != null) {
-            if (!javaFile.javaFileAbsolute.toFile().exists()) {
-                Files.deleteIfExists(javaFile.classFileAbsolute)
-                // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
-                // to detected build failure
-                scheduleDependenciesForCompilation(javaFile, info, context)
-            }
+        val existingJavaFile = info.javaFiles[file.relativePathStr]
+        // In the file is in info it means it was during the walking phase. We don't remove those
+        if (existingJavaFile != null) {
+            return
+        }
+
+        // We pretend that java class exists and create JavaToClass class.
+        // TODO JavaToClass concept doesn't really fit here well, worth to think about alternatives
+        val possibleJavaToClass = JavaToClass.get(info.inputDir, info.outputDir, file.relativePath)
+
+        if (!possibleJavaToClass.javaFileAbsolute.toFile().exists()) {
+            Files.deleteIfExists(possibleJavaToClass.classFileAbsolute)
+            // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
+            // to detected build failure
+            scheduleDependenciesForCompilation(possibleJavaToClass, info, context)
         }
     }
 }
@@ -101,8 +102,10 @@ fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBu
     }
 }
 
-private fun scheduleDependenciesForCompilation(javaFile: JavaToClass, info: CompilationInfo,
-                                               context: CompilationContext) {
+private fun scheduleDependenciesForCompilation(
+    javaFile: JavaToClass, info: CompilationInfo,
+    context: CompilationContext
+) {
     info.previousBuildInfo ?: return
 
     val buildFile = info.previousBuildInfo.getBuildFileInfo(javaFile.relativePath)
@@ -113,6 +116,8 @@ private fun scheduleDependenciesForCompilation(javaFile: JavaToClass, info: Comp
         if (javaClassDependsOnMe != null) {
             if (context.recompileRequired.contains(javaClassDependsOnMe)) {
                 context.recompileRequired.add(javaClassDependsOnMe)
+                // TODO: We schedule recompilation of the whole even though we don't always need it - only if it
+                //  fails we want dependencies to fail to compile as well
                 scheduleDependenciesForCompilation(javaClassDependsOnMe, info, context)
             }
         }

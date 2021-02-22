@@ -1,4 +1,4 @@
-package com.daxzel.compiler.compilation.dependencies
+package com.daxzel.compiler
 
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.commons.EmptyVisitor

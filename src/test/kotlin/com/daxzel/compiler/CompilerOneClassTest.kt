@@ -22,4 +22,16 @@ class CompilerOneClassTest {
         incrementalCompilationTest(ONE_CLASS_GROUP, 3, 1, 1)
     }
 
+    @Test
+    fun testCase4() {
+        // The java file has been removed
+        incrementalCompilationTest(ONE_CLASS_GROUP, 4, 1, 0)
+    }
+
+    @Test
+    fun testCase5() {
+        // The java file has been added
+        incrementalCompilationTest(ONE_CLASS_GROUP, 5, 0, 1)
+    }
+
 }
