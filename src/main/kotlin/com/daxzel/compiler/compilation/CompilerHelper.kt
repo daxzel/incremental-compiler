@@ -11,7 +11,7 @@ import java.nio.file.Path
 class CompilationInfo(
     val inputDir: Path,
     val outputDir: Path,
-    val javaFiles: Map<Path, JavaToClass>, // Relative java class path -> JavaToClass
+    val javaFiles: Map<String, JavaToClass>, // Relative java class path -> JavaToClass
     val previousBuildInfo: BuildInfo?,
     val javac: JavacRunner
 )
@@ -27,18 +27,13 @@ fun cleanClassesBasedOnRemoved(info: CompilationInfo, context: CompilationContex
 
     for (file in info.previousBuildInfo.files) {
 
-        val javaToClass = info.javaFiles[file.relativePath]
-        if (javaToClass != null) {
-            Files.deleteIfExists(javaToClass.javaFileAbsolute)
-            // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
-            // to detected build failure
-            for (dependsOnMe in file.filesDependsOnMe) {
-                val javaToClassDepends = info.javaFiles[dependsOnMe.relativePath]
-                // It is possible that dependency has been removed too so we need to check that it is still in the
-                // source folder
-                if (javaToClassDepends != null) {
-                    context.recompileRequired.add(javaToClassDepends)
-                }
+        val javaFile = info.javaFiles[file.relativePathStr]
+        if (javaFile != null) {
+            if (!javaFile.javaFileAbsolute.toFile().exists()) {
+                Files.deleteIfExists(javaFile.classFileAbsolute)
+                // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
+                // to detected build failure
+                scheduleDependenciesForCompilation(javaFile, info, context)
             }
         }
     }
@@ -112,7 +107,7 @@ private fun scheduleDependenciesForCompilation(javaFile: JavaToClass, info: Comp
     buildFile ?: return
 
     for (dependsOnMe in buildFile.filesDependsOnMe) {
-        val javaClassDependsOnMe = info.javaFiles[dependsOnMe.relativePath]
+        val javaClassDependsOnMe = info.javaFiles[dependsOnMe.relativePathStr]
         if (javaClassDependsOnMe != null) {
             if (context.recompileRequired.contains(javaClassDependsOnMe)) {
                 context.recompileRequired.add(javaClassDependsOnMe)

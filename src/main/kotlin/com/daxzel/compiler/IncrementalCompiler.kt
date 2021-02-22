@@ -1,7 +1,8 @@
 package com.daxzel.compiler
 
 import com.daxzel.compiler.compilation.*
-import com.daxzel.compiler.db.*
+import com.daxzel.compiler.db.BuildInfo
+import com.daxzel.compiler.db.getDb
 import kotlinx.dnq.creator.findOrNew
 import kotlinx.dnq.query.firstOrNull
 import java.nio.file.Path
@@ -17,7 +18,7 @@ class IncrementalCompiler(val javac: JavacRunner) {
                 val buildInfo = BuildInfo.all().firstOrNull()
 
                 val javaClasses = walkJavaClasses(inputDir, classpathDir)
-                    .collect(Collectors.toMap(JavaToClass::relativePath) { it });
+                    .collect(Collectors.toMap({ it.relativePath.toString() }, { it }));
 
                 val info = CompilationInfo(inputDir, classpathDir, javaClasses, buildInfo, javac)
                 val context = CompilationContext()
