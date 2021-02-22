@@ -33,7 +33,7 @@ class BuildInfo(entity: Entity) : XdEntity(entity) {
 
     val files by xdChildren0_N(BuildFileInfo::buildInfo)
 
-    fun getBuildFile(relativePath: Path): BuildFileInfo? {
+    fun getBuildFileInfo(relativePath: Path): BuildFileInfo? {
         val relativePathString = relativePath.toString()
         return files.filter {
             it.relativePathStr eq relativePathString

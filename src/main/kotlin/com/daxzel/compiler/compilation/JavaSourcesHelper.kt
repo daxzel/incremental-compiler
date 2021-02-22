@@ -38,7 +38,11 @@ fun compareClasses(dir1: Path, dir2: Path): Boolean {
     return getMD5Dir(dir1, extensions) == getMD5Dir(dir2, extensions)
 }
 
-fun getMD5(file: Path): String {
+fun getMD5(file: Path): String? {
+    if (!file.toFile().exists()) {
+        return null
+    }
+    assert(file.toFile().isFile)
     Files.newInputStream(file).use {
         return DigestUtils.md5Hex(it);
     }
