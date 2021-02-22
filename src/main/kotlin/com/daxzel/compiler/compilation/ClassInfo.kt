@@ -7,7 +7,7 @@ import org.objectweb.asm.commons.RemappingClassAdapter
 import java.nio.file.Files
 import java.nio.file.Path
 
-class ClassNameRecordingRemapper : Remapper() {
+private class ClassNameRecordingRemapper : Remapper() {
 
     val classNames: MutableSet<String> = mutableSetOf()
 
