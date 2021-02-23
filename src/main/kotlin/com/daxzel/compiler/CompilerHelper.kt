@@ -4,19 +4,45 @@ import kotlinx.dnq.query.iterator
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ *  Information object which is used by compilation stages to understand input parameters of compilation.
+ *  Logically it is read only information compared to [CompilationContext] which stores mutable information
+ *  about compilation.
+ *
+ * @property inputDir dir with java files
+ * @property outputDir dir with class files
+ * @property javaFiles list of java files we are compiling, keys are relative path to jave files
+ *      like [inputDir]/relativePath
+ * @property previousBuildInfo information about previous build, could be null if we start for the first time
+ * @property javac runner for javac
+ */
 class CompilationInfo(
     val inputDir: Path,
     val outputDir: Path,
-    val javaFiles: Map<String, JavaToClass>, // Relative java class path -> JavaToClass
+    val javaFiles: Map<String, JavaToClass>,
     val previousBuildInfo: BuildInfo?,
     val javac: JavacRunner
 )
 
+/**
+ * Store mutable information between compilation stages. Some stages need to schedule dependant class for recompile.
+ * // TODO: potentially we can implement it in immutable manner, think about it once compilation stages are finalized
+ */
 class CompilationContext {
+    // Files which has been recompiled during current build
     val recompiled: MutableSet<JavaToClass> = mutableSetOf()
+
+    // Files which should be recompiled regardless they have been changed or not.
     val recompileRequired: MutableSet<JavaToClass> = mutableSetOf()
 }
 
+/**
+ * Remove classes for the java files which has been removed since the last build. Use [BuildInfo] to understand
+ * which files have been used last time and if they are removed, remove classes as well.
+ *
+ * @param info see [CompilationInfo]
+ * @param context see [CompilationContext]
+ */
 fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationContext) {
     // No previous compilation. We are not int position to clen any .class files from the target directory
     info.previousBuildInfo ?: return
@@ -30,7 +56,7 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
         }
 
         // We pretend that java class exists and create JavaToClass class.
-        // TODO JavaToClass concept doesn't really fit here well, worth to think about alternatives
+        // TODO: JavaToClass concept doesn't really fit here very well, worth to think about alternatives
         val possibleJavaToClass = JavaToClass.get(info.inputDir, info.outputDir, file.relativePath)
 
         if (!possibleJavaToClass.javaFileAbsolute.toFile().exists()) {
@@ -42,6 +68,13 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
     }
 }
 
+/**
+ * Compile java files which are new or which has been changed. We use the last [BuildInfo] to understand
+ * which files has been changed. If it is the first build we build all java files we have in [CompilationInfo]
+ *
+ * @param info see [CompilationInfo]
+ * @param context see [CompilationContext]
+ */
 fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
     for (javaFile in info.javaFiles.values) {
         if (info.previousBuildInfo != null) {
@@ -58,6 +91,14 @@ fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
     }
 }
 
+/**
+ * Build dependencies which require recompilation based on list stored in [CompilationContext].
+ * This should be the late stage of compilation process after we gathered all dependencies which need recompilation
+ * from other stages.
+ *
+ * @param info see [CompilationInfo]
+ * @param context see [CompilationContext]
+ */
 fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
     for (javaFile in context.recompileRequired) {
         if (!context.recompiled.contains(javaFile)) {
@@ -67,7 +108,15 @@ fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
     }
 }
 
-
+/**
+ * Store information about the java files and their corresponding .class files into [newBuildInfo] so that we
+ * can used this information next time we run compilation. We store information about the file we recompiled as well \
+ * as the files which didn't need recompilation.
+ *
+ * @param info see [CompilationInfo]
+ * @param context see [CompilationContext]
+ * @param newBuildInfo current compilation [BuildInfo], being updated in this function
+ */
 fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBuildInfo: BuildInfo) {
     val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFileInfo>> = mutableMapOf()
     for (javaFile in context.recompiled) {
