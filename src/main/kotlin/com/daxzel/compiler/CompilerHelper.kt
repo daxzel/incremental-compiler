@@ -50,9 +50,9 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
     for (file in info.previousBuildInfo.files) {
 
         val existingJavaFile = info.javaFiles[file.relativePathStr]
-        // In the file is in info it means it was during the walking phase. We don't remove those
+        // The file is in info so it means it was there during the walking phase. We don't remove those.
         if (existingJavaFile != null) {
-            return
+            continue
         }
 
         // We pretend that java class exists and create JavaToClass class.
@@ -86,9 +86,25 @@ fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
             }
         }
         scheduleDependenciesForCompilation(javaFile, info, context)
-        info.javac.compileClass(javaFile.javaFileAbsolute, info.inputDir, info.outputDir)
-        context.recompiled.add(javaFile)
+        internalCompilation(javaFile, info, context)
     }
+}
+
+private fun internalCompilation(
+    javaFile: JavaToClass, info: CompilationInfo,
+    context: CompilationContext
+): JavacRunner.CompilationResult? {
+
+    if (!context.recompiled.contains(javaFile)) {
+        val result = info.javac.compileClass(javaFile.javaFileAbsolute, info.inputDir, info.outputDir)
+        context.recompiled.add(javaFile)
+        // We want dependencies to fail to compile in case the main one is failed so we delete previous .class file
+        if (!result.successful) {
+            Files.deleteIfExists(javaFile.classFileAbsolute)
+        }
+        return result
+    }
+    return null
 }
 
 /**
@@ -101,9 +117,11 @@ fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
  */
 fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
     for (javaFile in context.recompileRequired) {
-        if (!context.recompiled.contains(javaFile)) {
-            info.javac.compileClass(javaFile.javaFileAbsolute, info.inputDir, info.outputDir)
-            context.recompiled.add(javaFile)
+        val result = internalCompilation(javaFile, info, context)
+        // if we failed to compile class it is possible that dependencies of this class also are not
+        // compilable at the moment, we should try to recompile them to see
+        if (result != null && !result.successful) {
+            recursiveDependenciesCompilation(javaFile, info, context)
         }
     }
 }
@@ -151,9 +169,17 @@ fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBu
     }
 }
 
-private fun scheduleDependenciesForCompilation(
+/**
+ * Run specified action on dependencies of provided java file. To understand files depend on the class we use
+ * previous compilation info. If the info is missing we are not going to run the actions.
+ *
+ * @param javaFile to check dependencies for
+ * @param info see [CompilationInfo]
+ * @param action to run on the dependencies of [javaFile]
+ */
+private fun runOnDependencies(
     javaFile: JavaToClass, info: CompilationInfo,
-    context: CompilationContext
+    action: (dependency: JavaToClass) -> Unit
 ) {
     info.previousBuildInfo ?: return
 
@@ -163,12 +189,34 @@ private fun scheduleDependenciesForCompilation(
     for (dependsOnMe in buildFile.filesDependsOnMe) {
         val javaClassDependsOnMe = info.javaFiles[dependsOnMe.relativePathStr]
         if (javaClassDependsOnMe != null) {
-            if (context.recompileRequired.contains(javaClassDependsOnMe)) {
-                context.recompileRequired.add(javaClassDependsOnMe)
-                // TODO: We schedule recompilation of the whole even though we don't always need it - only if it
-                //  fails we want dependencies to fail to compile as well
-                scheduleDependenciesForCompilation(javaClassDependsOnMe, info, context)
-            }
+            action(javaClassDependsOnMe)
+        }
+    }
+}
+
+private fun recursiveDependenciesCompilation(
+    javaFile: JavaToClass, info: CompilationInfo,
+    context: CompilationContext
+) {
+    runOnDependencies(javaFile, info) { dependency ->
+        val result = internalCompilation(dependency, info, context)
+        // if we failed to compile class it is possible that dependencies of this class also are not
+        // compilable at the moment, we should try to recompile them to see
+        if (result != null && !result.successful) {
+            recursiveDependenciesCompilation(dependency, info, context)
+        }
+    }
+}
+
+private fun scheduleDependenciesForCompilation(
+    javaFile: JavaToClass, info: CompilationInfo,
+    context: CompilationContext
+) {
+    runOnDependencies(javaFile, info) { dependency ->
+        if (context.recompileRequired.contains(dependency)) {
+            context.recompileRequired.add(dependency)
+            // We don't schedule dependencies recursively as this decision is based on compilation result
+            // so we do in latter stages of compilation when we starting compiling dependencies.
         }
     }
 }

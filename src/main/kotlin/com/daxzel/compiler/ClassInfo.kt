@@ -17,7 +17,7 @@ private class ClassNameRecordingRemapper : Remapper() {
     }
 }
 
-class ClassInfo(val classname: String, val dependencies: Set<String>)
+data class ClassInfo(val classname: String, val dependencies: Set<String>)
 
 fun getClassInfo(classFile: Path): ClassInfo {
 
