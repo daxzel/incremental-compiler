@@ -99,6 +99,7 @@ private fun internalCompilation(
         context.recompiled.add(javaFile)
         // We want dependencies to fail to compile in case the main one is failed so we delete previous .class file
         if (!result.successful) {
+            System.err.println(result.error)
             Files.deleteIfExists(javaFile.classFileAbsolute)
         }
         return result
