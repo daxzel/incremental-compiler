@@ -1,6 +1,5 @@
 package com.daxzel.compiler
 
-import com.daxzel.compiler.JavacRunner
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.mockito.Mockito
 import org.mockito.Mockito.times

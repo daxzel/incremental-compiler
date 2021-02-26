@@ -213,11 +213,9 @@ private fun scheduleDependenciesForCompilation(
     context: CompilationContext
 ) {
     runOnDependencies(javaFile, info) { dependency ->
-        if (context.recompileRequired.contains(dependency)) {
-            context.recompileRequired.add(dependency)
-            // We don't schedule dependencies recursively as this decision is based on compilation result
-            // so we do in latter stages of compilation when we starting compiling dependencies.
-        }
+        context.recompileRequired.add(dependency)
+        // We don't schedule dependencies recursively as this decision is based on compilation result
+        // so we do in latter stages of compilation when we starting compiling dependencies.
     }
 }
 
