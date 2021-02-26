@@ -55,28 +55,28 @@ fun javaToClassFilename(javaFileName: Path): Path {
  */
 fun compareClasses(dir1: Path, dir2: Path): Boolean {
     val extensions = setOf(CLASS_EXTENSION)
-    return getMD5Dir(dir1, extensions) == getMD5Dir(dir2, extensions)
+    return getSHA1Dir(dir1, extensions) == getSHA1Dir(dir2, extensions)
 }
 
-fun getMD5(file: Path): String? {
+fun getSHA1(file: Path): String? {
     if (!file.toFile().exists()) {
         return null
     }
     assert(file.toFile().isFile)
     Files.newInputStream(file).use {
-        return DigestUtils.md5Hex(it);
+        return DigestUtils.sha1Hex(it);
     }
 }
 
-fun getMD5Dir(dirToHash: Path, extensions: Set<String>): String {
+fun getSHA1Dir(dirToHash: Path, extensions: Set<String>): String {
     assert(dirToHash.toFile().isDirectory)
     val fileStreams = mutableListOf<FileInputStream>()
     collectInputStreams(dirToHash, fileStreams, extensions)
     val seqStream = SequenceInputStream(Collections.enumeration(fileStreams))
     try {
-        val md5Hash = DigestUtils.md5Hex(seqStream)
+        val sha1Hash = DigestUtils.sha1Hex(seqStream)
         seqStream.close()
-        return md5Hash
+        return sha1Hash
     } catch (e: IOException) {
         throw RuntimeException(
             "Error reading files to hash in " + dirToHash.toAbsolutePath().toString(), e

@@ -119,17 +119,17 @@ fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBu
     val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFileInfo>> = mutableMapOf()
     for (javaFile in context.recompiled) {
 
-        val javaFileHash = getMD5(javaFile.javaFileAbsolute)
-        val classFileHash = getMD5(javaFile.classFileAbsolute)
+        val javaFileSHA1 = getSHA1(javaFile.javaFileAbsolute)
+        val classFileSHA1 = getSHA1(javaFile.classFileAbsolute)
 
         // For some reasons we lost file after recompilation
         // TODO: handle concurrent changes during the build process
-        classFileHash ?: continue
-        javaFileHash ?: continue
+        classFileSHA1 ?: continue
+        javaFileSHA1 ?: continue
 
         val newBuildFile = BuildFileInfo.new {
-            this.sourceHash = javaFileHash
-            this.classHash = classFileHash
+            this.sourceDirSHA1 = javaFileSHA1
+            this.classDirSHA1 = classFileSHA1
             this.relativePathStr = javaFile.relativePath.toString()
         }
 
@@ -197,15 +197,15 @@ private fun scheduleDependenciesForCompilation(
 
 private fun requiresRecompilation(javaFile: JavaToClass, buildFileInfo: BuildFileInfo): Boolean {
 
-    val currentSourceHash = getMD5(javaFile.javaFileAbsolute)
+    val currentSourceHash = getSHA1(javaFile.javaFileAbsolute)
     currentSourceHash ?: return true // Source file is gone for some reasons
 
-    val currentClassHash = getMD5(javaFile.classFileAbsolute)
+    val currentClassHash = getSHA1(javaFile.classFileAbsolute)
     currentClassHash ?: return true // Class file doesn't exists anymore so we need to rebuild
 
-    if (buildFileInfo.sourceHash != currentSourceHash) {
+    if (buildFileInfo.sourceDirSHA1 != currentSourceHash) {
         return true // Source changed we for sure need recompilation
     }
     // safety check if somebody changed .class since last time we have been rebuilding it
-    return buildFileInfo.classHash != currentClassHash
+    return buildFileInfo.classDirSHA1 != currentClassHash
 }

@@ -18,8 +18,8 @@ class BuildFileInfo(entity: Entity) : XdEntity(entity) {
 
     var relativePathStr by xdRequiredStringProp()
 
-    var sourceHash by xdRequiredStringProp()
-    var classHash by xdRequiredStringProp()
+    var sourceDirSHA1 by xdRequiredStringProp()
+    var classDirSHA1 by xdRequiredStringProp()
 
     var buildInfo: BuildInfo by xdParent(BuildInfo::files)
 
@@ -48,7 +48,7 @@ class BuildInfo(entity: Entity) : XdEntity(entity) {
 }
 
 /**
- * Get connection to DB which is stored together with a build result. Stores information needed to incremental
+ * Get the connection to DB which is stored together with a build result. Stores information needed to incremental
  * consequent builds.
  */
 fun getDb(classFilesDir: Path): TransientEntityStore {
