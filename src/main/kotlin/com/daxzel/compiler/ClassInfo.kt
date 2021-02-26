@@ -12,8 +12,8 @@ private class ClassNameRecordingRemapper : Remapper() {
     val classNames: MutableSet<String> = mutableSetOf()
 
     override fun mapType(type: String): String {
-        classNames.add(type);
-        return type;
+        classNames.add(type)
+        return type
     }
 }
 

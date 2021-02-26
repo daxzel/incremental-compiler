@@ -52,8 +52,8 @@ class BuildInfo(entity: Entity) : XdEntity(entity) {
  * consequent builds.
  */
 fun getDb(classFilesDir: Path): TransientEntityStore {
-    val userDir = System.getProperty("user.dir");
-    println("Current working directory : $userDir");
+    val userDir = System.getProperty("user.dir")
+    println("Current working directory : $userDir")
     val dbPath = classFilesDir.resolve(".inc_compiler")
 
     XdModel.registerNodes(BuildInfo, BuildFileInfo)

@@ -115,6 +115,7 @@ fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
  * can used this information next time we run compilation. We store information about the file we recompiled as well \
  * as the files which didn't need recompilation.
  */
+@Suppress("UNUSED_PARAMETER") // just use info for consistency
 fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBuildInfo: BuildInfo) {
     val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFileInfo>> = mutableMapOf()
     for (javaFile in context.recompiled) {

@@ -16,7 +16,7 @@ class IncrementalCompiler(val javac: JavacRunner) {
                 val buildInfo = BuildInfo.all().firstOrNull()
 
                 val javaClasses = walkJavaClasses(sourceFilesDir, classFilesDir)
-                    .collect(Collectors.toMap({ it.relativePath.toString() }, { it }));
+                    .collect(Collectors.toMap({ it.relativePath.toString() }, { it }))
 
                 val info = CompilationInfo(sourceFilesDir, classFilesDir, javaClasses, buildInfo, javac)
                 val context = CompilationContext()

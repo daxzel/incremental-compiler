@@ -17,7 +17,7 @@ class JavacRunner {
         val process = Runtime.getRuntime().exec(javacCommand)
         return if (process.waitFor() != 0) {
             val error = IOUtils.toString(process.errorStream, StandardCharsets.UTF_8)
-            CompilationResult(false, error);
+            CompilationResult(false, error)
         } else {
             CompilationResult(true)
         }
