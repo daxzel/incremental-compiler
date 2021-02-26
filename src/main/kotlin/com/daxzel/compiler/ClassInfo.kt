@@ -19,6 +19,10 @@ private class ClassNameRecordingRemapper : Remapper() {
 
 data class ClassInfo(val classname: String, val dependencies: Set<String>)
 
+/**
+ * Analise .class and provide information needed for incremental compilation.
+ *
+ */
 fun getClassInfo(classFile: Path): ClassInfo {
 
     val bytecode: ByteArray = Files.readAllBytes(classFile)

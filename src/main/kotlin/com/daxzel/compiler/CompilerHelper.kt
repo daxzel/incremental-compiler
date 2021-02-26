@@ -8,13 +8,6 @@ import java.nio.file.Path
  *  Information object which is used by compilation stages to understand input parameters of compilation.
  *  Logically it is read only information compared to [CompilationContext] which stores mutable information
  *  about compilation.
- *
- * @property inputDir dir with java files
- * @property outputDir dir with class files
- * @property javaFiles list of java files we are compiling, keys are relative path to jave files
- *      like [inputDir]/relativePath
- * @property previousBuildInfo information about previous build, could be null if we start for the first time
- * @property javac runner for javac
  */
 class CompilationInfo(
     val inputDir: Path,
@@ -25,7 +18,7 @@ class CompilationInfo(
 )
 
 /**
- * Store mutable information between compilation stages. Some stages need to schedule dependant class for recompile.
+ * Storing mutable information between compilation stages. Some stages need to schedule dependant class for recompile.
  * // TODO: potentially we can implement it in immutable manner, think about it once compilation stages are finalized
  */
 class CompilationContext {
@@ -39,9 +32,6 @@ class CompilationContext {
 /**
  * Remove classes for the java files which has been removed since the last build. Use [BuildInfo] to understand
  * which files have been used last time and if they are removed, remove classes as well.
- *
- * @param info see [CompilationInfo]
- * @param context see [CompilationContext]
  */
 fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationContext) {
     // No previous compilation. We are not int position to clen any .class files from the target directory
@@ -71,9 +61,6 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
 /**
  * Compile java files which are new or which has been changed. We use the last [BuildInfo] to understand
  * which files has been changed. If it is the first build we build all java files we have in [CompilationInfo]
- *
- * @param info see [CompilationInfo]
- * @param context see [CompilationContext]
  */
 fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
     for (javaFile in info.javaFiles.values) {
@@ -111,9 +98,6 @@ private fun internalCompilation(
  * Build dependencies which require recompilation based on list stored in [CompilationContext].
  * This should be the late stage of compilation process after we gathered all dependencies which need recompilation
  * from other stages.
- *
- * @param info see [CompilationInfo]
- * @param context see [CompilationContext]
  */
 fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
     for (javaFile in context.recompileRequired) {
@@ -130,10 +114,6 @@ fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
  * Store information about the java files and their corresponding .class files into [newBuildInfo] so that we
  * can used this information next time we run compilation. We store information about the file we recompiled as well \
  * as the files which didn't need recompilation.
- *
- * @param info see [CompilationInfo]
- * @param context see [CompilationContext]
- * @param newBuildInfo current compilation [BuildInfo], being updated in this function
  */
 fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBuildInfo: BuildInfo) {
     val builtClasses: MutableMap<String, Pair<ClassInfo, BuildFileInfo>> = mutableMapOf()
@@ -143,7 +123,7 @@ fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBu
         val classFileHash = getMD5(javaFile.classFileAbsolute)
 
         // For some reasons we lost file after recompilation
-        // TODO handle failure in the build process
+        // TODO: handle concurrent changes during the build process
         classFileHash ?: continue
         javaFileHash ?: continue
 
@@ -170,12 +150,8 @@ fun fillUpNewBuildInfo(info: CompilationInfo, context: CompilationContext, newBu
 }
 
 /**
- * Run specified action on dependencies of provided java file. To understand files depend on the class we use
- * previous compilation info. If the info is missing we are not going to run the actions.
- *
- * @param javaFile to check dependencies for
- * @param info see [CompilationInfo]
- * @param action to run on the dependencies of [javaFile]
+ * Run specified action on dependencies of a provided java file. To understand which files depend on the class we use
+ * a previous compilation info. If the info is missing we are not going to run the action.
  */
 private fun runOnDependencies(
     javaFile: JavaToClass, info: CompilationInfo,
@@ -201,7 +177,7 @@ private fun recursiveDependenciesCompilation(
     runOnDependencies(javaFile, info) { dependency ->
         val result = internalCompilation(dependency, info, context)
         // if we failed to compile class it is possible that dependencies of this class also are not
-        // compilable at the moment, we should try to recompile them to see
+        // compilable at the moment, we should try to recompile them to see.
         if (result != null && !result.successful) {
             recursiveDependenciesCompilation(dependency, info, context)
         }

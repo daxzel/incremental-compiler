@@ -13,6 +13,10 @@ import java.util.stream.Stream
 private const val CLASS_EXTENSION = "class"
 private const val JAVA_EXTENSION = "java"
 
+/**
+ * Represents a single build target, in out case it is a java file. It has a relative path, an absolution path and path
+ * to potential .class file. TODO: Handle multiple .class files when with inner classes
+ */
 class JavaToClass private constructor(val relativePath: Path,
                                       val javaFileAbsolute: Path, val classFileAbsolute: Path) {
     companion object {
@@ -23,6 +27,9 @@ class JavaToClass private constructor(val relativePath: Path,
     }
 }
 
+/**
+ * Traverse [inputDir] and file all .java class and create a stream [JavaToClass] instances.
+ */
 fun walkJavaClasses(inputDir: Path, outputDir: Path): Stream<JavaToClass> {
     return Files.walk(inputDir)
         .filter { it.toFile().isFile }
@@ -32,7 +39,9 @@ fun walkJavaClasses(inputDir: Path, outputDir: Path): Stream<JavaToClass> {
             JavaToClass.get(inputDir, outputDir, relativePath)
         }
 }
-
+/**
+ * Based on a .java file get a .class file name.
+ */
 fun javaToClassFilename(javaFileName: Path): Path {
     val fileName = javaFileName.toAbsolutePath().toString();
     assert(getExtension(fileName) == JAVA_EXTENSION)
@@ -40,6 +49,10 @@ fun javaToClassFilename(javaFileName: Path): Path {
     return Paths.get("$filenameWithoutExtension.$CLASS_EXTENSION")
 }
 
+/**
+ * Compare .class files in two directors
+ * @return true if directories are identical from perspective of .class files.
+ */
 fun compareClasses(dir1: Path, dir2: Path): Boolean {
     val extensions = setOf(CLASS_EXTENSION)
     return getMD5Dir(dir1, extensions) == getMD5Dir(dir2, extensions)

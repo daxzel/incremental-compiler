@@ -4,6 +4,10 @@ import org.apache.commons.io.IOUtils
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
+/**
+ * Single file compiler which calls javac. Mostly needed to be able to mock javac calls and calculator number of
+ * javac calls in tests.
+ */
 class JavacRunner {
 
     data class CompilationResult(val successful: Boolean, val error: String? = null)

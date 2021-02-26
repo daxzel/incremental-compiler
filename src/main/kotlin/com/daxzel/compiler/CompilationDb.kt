@@ -10,6 +10,9 @@ import kotlinx.dnq.util.initMetaData
 import java.nio.file.Path
 import java.nio.file.Paths
 
+/**
+ * Stores information about .java files and their corresponding build result files .class.
+ */
 class BuildFileInfo(entity: Entity) : XdEntity(entity) {
     companion object : XdNaturalEntityType<BuildFileInfo>()
 
@@ -26,6 +29,9 @@ class BuildFileInfo(entity: Entity) : XdEntity(entity) {
         get() = Paths.get(this.relativePathStr)
 }
 
+/**
+ * Stores information previous build with information needed for incremental compilation
+ */
 class BuildInfo(entity: Entity) : XdEntity(entity) {
     companion object : XdNaturalEntityType<BuildInfo>()
 
@@ -41,10 +47,14 @@ class BuildInfo(entity: Entity) : XdEntity(entity) {
     }
 }
 
-fun getDb(dir: Path): TransientEntityStore {
+/**
+ * Get connection to DB which is stored together with a build result. Stores information needed to incremental
+ * consequent builds.
+ */
+fun getDb(classFilesDir: Path): TransientEntityStore {
     val userDir = System.getProperty("user.dir");
     println("Current working directory : $userDir");
-    val dbPath = dir.resolve(".inc_compiler")
+    val dbPath = classFilesDir.resolve(".inc_compiler")
 
     XdModel.registerNodes(BuildInfo, BuildFileInfo)
 
