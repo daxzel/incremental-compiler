@@ -1,6 +1,8 @@
 package com.daxzel.compiler
 
 import kotlinx.dnq.query.iterator
+import kotlinx.dnq.query.size
+import me.tongfei.progressbar.ProgressBar
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -37,23 +39,27 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
     // No previous compilation. We are not int position to clen any .class files from the target directory
     info.previousBuildInfo ?: return
 
-    for (file in info.previousBuildInfo.files) {
+    val filesSize = info.previousBuildInfo.files.size()
 
-        val existingJavaFile = info.javaFiles[file.relativePathStr]
-        // The file is in info so it means it was there during the walking phase. We don't remove those.
-        if (existingJavaFile != null) {
-            continue
-        }
+    ProgressBar("Cleaning old .class files", filesSize.toLong()).use { bar ->
+        for (file in info.previousBuildInfo.files) {
+            bar.step()
+            val existingJavaFile = info.javaFiles[file.relativePathStr]
+            // The file is in info so it means it was there during the walking phase. We don't remove those.
+            if (existingJavaFile != null) {
+                continue
+            }
 
-        // We pretend that java class exists and create JavaToClass class.
-        // TODO: JavaToClass concept doesn't really fit here very well, worth to think about alternatives
-        val possibleJavaToClass = JavaToClass.get(info.inputDir, info.outputDir, file.relativePath)
+            // We pretend that java class exists and create JavaToClass class.
+            // TODO: JavaToClass concept doesn't really fit here very well, worth to think about alternatives
+            val possibleJavaToClass = JavaToClass.get(info.inputDir, info.outputDir, file.relativePath)
 
-        if (!possibleJavaToClass.javaFileAbsolute.toFile().exists()) {
-            Files.deleteIfExists(possibleJavaToClass.classFileAbsolute)
-            // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
-            // to detected build failure
-            scheduleDependenciesForCompilation(possibleJavaToClass, info, context)
+            if (!possibleJavaToClass.javaFileAbsolute.toFile().exists()) {
+                Files.deleteIfExists(possibleJavaToClass.classFileAbsolute)
+                // In case some file has been removed we need to make sure all dependencies are scheduled for compilation
+                // to detected build failure
+                scheduleDependenciesForCompilation(possibleJavaToClass, info, context)
+            }
         }
     }
 }
@@ -63,17 +69,23 @@ fun cleanClassesForRemovedFiles(info: CompilationInfo, context: CompilationConte
  * which files has been changed. If it is the first build we build all java files we have in [CompilationInfo]
  */
 fun compileNewAndChanged(info: CompilationInfo, context: CompilationContext) {
-    for (javaFile in info.javaFiles.values) {
-        if (info.previousBuildInfo != null) {
-            val buildFile = info.previousBuildInfo.getBuildFileInfo(javaFile.relativePath)
-            if (buildFile != null) {
-                if (!requiresRecompilation(javaFile, buildFile)) {
-                    continue
+    val filesSize = info.javaFiles.size
+
+    ProgressBar("Compiling java files", filesSize.toLong()).use { bar ->
+        for (javaFile in info.javaFiles.values) {
+            bar.step()
+            if (info.previousBuildInfo != null) {
+                val buildFile = info.previousBuildInfo.getBuildFileInfo(javaFile.relativePath)
+                if (buildFile != null) {
+                    if (!requiresRecompilation(javaFile, buildFile)) {
+                        continue
+                    }
                 }
             }
+            bar.extraMessage = "Compiling ${javaFile.relativePath}"
+            scheduleDependenciesForCompilation(javaFile, info, context)
+            internalCompilation(javaFile, info, context)
         }
-        scheduleDependenciesForCompilation(javaFile, info, context)
-        internalCompilation(javaFile, info, context)
     }
 }
 
@@ -100,12 +112,16 @@ private fun internalCompilation(
  * from other stages.
  */
 fun compileDependencies(info: CompilationInfo, context: CompilationContext) {
-    for (javaFile in context.recompileRequired) {
-        val result = internalCompilation(javaFile, info, context)
-        // if we failed to compile class it is possible that dependencies of this class also are not
-        // compilable at the moment, we should try to recompile them to see
-        if (result != null && !result.successful) {
-            recursiveDependenciesCompilation(javaFile, info, context)
+    ProgressBar("Compiling depending java files", context.recompileRequired.size.toLong()).use { bar ->
+        for (javaFile in context.recompileRequired) {
+            bar.step()
+            bar.extraMessage = "Compiling ${javaFile.relativePath}"
+            val result = internalCompilation(javaFile, info, context)
+            // if we failed to compile class it is possible that dependencies of this class also are not
+            // compilable at the moment, we should try to recompile them to see
+            if (result != null && !result.successful) {
+                recursiveDependenciesCompilation(javaFile, info, context)
+            }
         }
     }
 }
